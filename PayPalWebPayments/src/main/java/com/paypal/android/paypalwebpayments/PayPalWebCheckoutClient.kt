@@ -136,11 +136,9 @@ class PayPalWebCheckoutClient internal constructor(
     /**
      * Initiates PayPal checkout using the Shopper Session ID pre-warmed by [createPayPalSession].
      *
-     * [CheckoutEvent.STARTED] fires synchronously as soon as this method is called. If the
-     * session fetch is still in progress this method awaits its completion before launching
-     * checkout. If [createPayPalSession] was never called, [CheckoutEvent.SESSION_NOT_STARTED]
-     * fires and the callback receives a [PayPalPresentAuthChallengeResult.Failure] with error
-     * code `SESSION_NOT_CREATED`.
+     * If the session fetch is still in progress this method awaits its completion before
+     * launching checkout. If [createPayPalSession] was never called the callback receives a
+     * [PayPalPresentAuthChallengeResult.Failure] with error code `SESSION_NOT_STARTED`.
      *
      * @param activity The activity to launch the PayPal checkout from.
      * @param orderId The ID of the order to be approved.
@@ -197,11 +195,9 @@ class PayPalWebCheckoutClient internal constructor(
     /**
      * Initiates PayPal vault using the Shopper Session ID pre-warmed by [createPayPalSession].
      *
-     * [VaultEvent.STARTED] fires synchronously as soon as this method is called. If the session
-     * fetch is still in progress this method awaits its completion before launching the vault
-     * flow. If [createPayPalSession] was never called, [VaultEvent.SESSION_NOT_STARTED] fires and
-     * the callback receives a [PayPalPresentAuthChallengeResult.Failure] with error code
-     * `SESSION_NOT_CREATED`.
+     * If the session fetch is still in progress this method awaits its completion before
+     * launching the vault flow. If [createPayPalSession] was never called the callback receives a
+     * [PayPalPresentAuthChallengeResult.Failure] with error code `SESSION_NOT_STARTED`.
      *
      * @param activity The activity to launch the PayPal vault flow from.
      * @param setupTokenId The setup token ID associated with the vault approval.
