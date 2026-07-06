@@ -9,8 +9,8 @@ import com.paypal.android.api.model.PayPalSetupToken
 import com.paypal.android.api.services.SDKSampleServerAPI
 import com.paypal.android.corepayments.CoreConfig
 import com.paypal.android.paypalwebpayments.PayPalPresentAuthChallengeResult
-import com.paypal.android.paypalwebpayments.PayPalWebCheckoutClient
 import com.paypal.android.paypalwebpayments.PayPalWebCheckoutFinishVaultResult
+import com.paypal.android.paypalwebpayments.PayPalWebClient
 import com.paypal.android.paypalwebpayments.PayPalWebVaultRequest
 import com.paypal.android.uishared.enums.ReturnToAppStrategyOption
 import com.paypal.android.uishared.state.ActionState
@@ -31,7 +31,7 @@ class PayPalVaultViewModel @Inject constructor(
     val createPayPalPaymentTokenUseCase: CreatePayPalPaymentTokenUseCase,
 ) : ViewModel() {
     private val coreConfig = CoreConfig(SDKSampleServerAPI.clientId)
-    private val paypalClient = PayPalWebCheckoutClient(applicationContext, coreConfig)
+    private val paypalClient = PayPalWebClient(applicationContext, coreConfig)
 
     private val _uiState = MutableStateFlow(PayPalVaultUiState())
     val uiState = _uiState.asStateFlow()

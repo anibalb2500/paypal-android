@@ -14,10 +14,10 @@ import com.paypal.android.fraudprotection.PayPalDataCollector
 import com.paypal.android.fraudprotection.PayPalDataCollectorRequest
 import com.paypal.android.models.OrderRequest
 import com.paypal.android.paypalwebpayments.PayPalPresentAuthChallengeResult
-import com.paypal.android.paypalwebpayments.PayPalWebCheckoutClient
 import com.paypal.android.paypalwebpayments.PayPalWebCheckoutFinishStartResult
 import com.paypal.android.paypalwebpayments.PayPalWebCheckoutFundingSource
 import com.paypal.android.paypalwebpayments.PayPalWebCheckoutRequest
+import com.paypal.android.paypalwebpayments.PayPalWebClient
 import com.paypal.android.uishared.enums.ReturnToAppStrategyOption
 import com.paypal.android.uishared.state.ActionState
 import com.paypal.android.usecase.CompleteOrderUseCase
@@ -44,7 +44,7 @@ class PayPalCheckoutViewModel @Inject constructor(
     private val coreConfig = CoreConfig(SDKSampleServerAPI.clientId)
     private val payPalDataCollector = PayPalDataCollector(coreConfig)
     private val paypalClient =
-        PayPalWebCheckoutClient(applicationContext, coreConfig)
+        PayPalWebClient(applicationContext, coreConfig)
 
     private val _uiState = MutableStateFlow(PayPalUiState())
     val uiState = _uiState.asStateFlow()

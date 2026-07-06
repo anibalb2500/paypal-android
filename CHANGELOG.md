@@ -2,12 +2,17 @@
 
 ## Unreleased
 
-* Adds new property `appLinkUrl` in `PayPalWebCheckoutRequest` to specify app link url that will be
-  used to re-open app after approving order
-* Adds new property `appLinkUrl` in `PayPalWebVaultRequest` to specify app link url that will be
-  used to re-open app after vaulting
-* Deprecates `urlScheme` property in `PayPalWebCheckoutClient` instead use `fallbackUrlScheme` in
-  `PayPalWebCheckoutRequest` and `PayPalWebVaultRequest`
+* PayPalWebPayments
+  * Adds new property `appLinkUrl` in `PayPalWebCheckoutRequest` to specify app link url that will be
+    used to re-open app after approving order
+  * Adds new property `appLinkUrl` in `PayPalWebVaultRequest` to specify app link url that will be
+    used to re-open app after vaulting
+  * Deprecates `urlScheme` property in `PayPalWebCheckoutClient` instead use `fallbackUrlScheme` in
+    `PayPalWebCheckoutRequest` and `PayPalWebVaultRequest`
+  * Renames `PayPalWebCheckoutClient` to `PayPalWebClient` since it now offers both checkout and
+    vaulting functionality
+    * `PayPalWebCheckoutClient` is deprecated and kept as a type alias for `PayPalWebClient` for
+      source compatibility; update references to use `PayPalWebClient` instead
 
 ## 2.3.0 (2025-11-03)
 * PayPalWebPayments

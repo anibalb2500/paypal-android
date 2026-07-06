@@ -41,7 +41,7 @@ import org.robolectric.RobolectricTestRunner
 @Suppress("LargeClass")
 @ExperimentalCoroutinesApi
 @RunWith(RobolectricTestRunner::class)
-class PayPalWebCheckoutClientUnitTest {
+class PayPalWebClientUnitTest {
 
     @MockK
     private val activity: FragmentActivity = mockk(relaxed = true)
@@ -66,7 +66,7 @@ class PayPalWebCheckoutClientUnitTest {
 
     @MockK
     private val payPalWebLauncher: PayPalWebLauncher = mockk(relaxed = true)
-    private lateinit var sut: PayPalWebCheckoutClient
+    private lateinit var sut: PayPalWebClient
 
     private val testDispatcher = StandardTestDispatcher()
 
@@ -74,7 +74,7 @@ class PayPalWebCheckoutClientUnitTest {
     fun beforeEach() {
         MockKAnnotations.init(this)
         Dispatchers.setMain(testDispatcher)
-        sut = PayPalWebCheckoutClient(
+        sut = PayPalWebClient(
             analytics = analytics,
             payPalWebLauncher = payPalWebLauncher,
             sessionStore = PayPalWebCheckoutSessionStore(),
@@ -287,7 +287,7 @@ class PayPalWebCheckoutClientUnitTest {
             payPalWebLauncher.completeCheckoutAuthRequest(intent, "auth state")
         } returns successResult
 
-            val launchWithUrlClient = PayPalWebCheckoutClient(
+            val launchWithUrlClient = PayPalWebClient(
             analytics = analytics,
             payPalWebLauncher = payPalWebLauncher,
             sessionStore = PayPalWebCheckoutSessionStore(),
@@ -410,7 +410,7 @@ class PayPalWebCheckoutClientUnitTest {
             payPalWebLauncher.completeCheckoutAuthRequest(intent, "auth state")
         } returns canceledResult
 
-            val launchWithUrlClient = PayPalWebCheckoutClient(
+            val launchWithUrlClient = PayPalWebClient(
             analytics = analytics,
             payPalWebLauncher = payPalWebLauncher,
             sessionStore = PayPalWebCheckoutSessionStore(),
@@ -919,7 +919,7 @@ class PayPalWebCheckoutClientUnitTest {
         runTest {
         val launchResult = PayPalPresentAuthChallengeResult.Success("auth state")
 
-        val previousClient = PayPalWebCheckoutClient(
+        val previousClient = PayPalWebClient(
             analytics = analytics,
             payPalWebLauncher = payPalWebLauncher,
             sessionStore = PayPalWebCheckoutSessionStore(),
@@ -963,7 +963,7 @@ class PayPalWebCheckoutClientUnitTest {
         runTest {
             val launchResult = PayPalPresentAuthChallengeResult.Success("auth state")
 
-        val previousClient = PayPalWebCheckoutClient(
+        val previousClient = PayPalWebClient(
             analytics = analytics,
             payPalWebLauncher = payPalWebLauncher,
             sessionStore = PayPalWebCheckoutSessionStore(),
@@ -1200,7 +1200,7 @@ class PayPalWebCheckoutClientUnitTest {
     @Suppress("DEPRECATION")
     fun `start() with deprecated urlScheme constructor passes urlScheme to launcher`() = runTest {
         val mockLauncher = mockk<PayPalWebLauncher>(relaxed = true)
-        val clientWithUrlScheme = PayPalWebCheckoutClient(
+        val clientWithUrlScheme = PayPalWebClient(
             analytics = analytics,
             payPalWebLauncher = mockLauncher,
             sessionStore = PayPalWebCheckoutSessionStore(),
@@ -1243,7 +1243,7 @@ class PayPalWebCheckoutClientUnitTest {
     @Suppress("DEPRECATION")
     fun `vault() with deprecated urlScheme constructor passes urlScheme to launcher`() = runTest {
         val mockLauncher = mockk<PayPalWebLauncher>(relaxed = true)
-        val clientWithUrlScheme = PayPalWebCheckoutClient(
+        val clientWithUrlScheme = PayPalWebClient(
             analytics = analytics,
             payPalWebLauncher = mockLauncher,
             sessionStore = PayPalWebCheckoutSessionStore(),
@@ -1287,7 +1287,7 @@ class PayPalWebCheckoutClientUnitTest {
     fun `start() with deprecated urlScheme constructor and AppLink in request prioritizes AppLink`() =
         runTest {
             val mockLauncher = mockk<PayPalWebLauncher>(relaxed = true)
-            val clientWithUrlScheme = PayPalWebCheckoutClient(
+            val clientWithUrlScheme = PayPalWebClient(
                 analytics = analytics,
                 payPalWebLauncher = mockLauncher,
                 sessionStore = PayPalWebCheckoutSessionStore(),
@@ -1335,7 +1335,7 @@ class PayPalWebCheckoutClientUnitTest {
     fun `vault() with deprecated urlScheme constructor and AppLink in request prioritizes AppLink`() =
         runTest {
             val mockLauncher = mockk<PayPalWebLauncher>(relaxed = true)
-            val clientWithUrlScheme = PayPalWebCheckoutClient(
+            val clientWithUrlScheme = PayPalWebClient(
                 analytics = analytics,
                 payPalWebLauncher = mockLauncher,
                 sessionStore = PayPalWebCheckoutSessionStore(),
@@ -1572,7 +1572,7 @@ class PayPalWebCheckoutClientUnitTest {
     @Test
     fun `startAsync() uses default urlScheme when returnToAppStrategy is null`() = runTest {
         // Create a client with urlScheme
-        val clientWithUrlScheme = PayPalWebCheckoutClient(
+        val clientWithUrlScheme = PayPalWebClient(
             analytics = analytics,
             payPalWebLauncher = payPalWebLauncher,
             sessionStore = PayPalWebCheckoutSessionStore(),
@@ -1684,7 +1684,7 @@ class PayPalWebCheckoutClientUnitTest {
     @Test
     fun `vaultAsync() uses default urlScheme when returnToAppStrategy is null`() = runTest {
         // Create a client with urlScheme
-        val clientWithUrlScheme = PayPalWebCheckoutClient(
+        val clientWithUrlScheme = PayPalWebClient(
             analytics = analytics,
             payPalWebLauncher = payPalWebLauncher,
             sessionStore = PayPalWebCheckoutSessionStore(),
@@ -1959,5 +1959,21 @@ class PayPalWebCheckoutClientUnitTest {
                 false
             )
         }
+    }
+
+    @Suppress("DEPRECATION")
+    @Test
+    fun `deprecated PayPalWebCheckoutClient type alias still resolves to PayPalWebClient`() {
+        val deprecatedClient: PayPalWebCheckoutClient = PayPalWebClient(
+            analytics = analytics,
+            payPalWebLauncher = payPalWebLauncher,
+            sessionStore = PayPalWebCheckoutSessionStore(),
+            updateClientConfigAPI = updateClientConfigAPI,
+            patchCCOWithAppSwitchEligibility = patchCCOWithAppSwitchEligibility,
+            deviceInspector = deviceInspector,
+            coreConfig = coreConfig
+        )
+
+        assertTrue(deprecatedClient is PayPalWebClient)
     }
 }

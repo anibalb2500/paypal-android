@@ -28,14 +28,12 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-// NEXT MAJOR VERSION: consider renaming this module to PayPalWebClient since
-// it now offers both checkout and vaulting
-
 /**
- * Use this client to approve an order with a [PayPalWebCheckoutRequest].
+ * Use this client to approve an order with a [PayPalWebCheckoutRequest], or to vault PayPal as a
+ * payment method with a [PayPalWebVaultRequest].
  */
 @Suppress("TooManyFunctions") // Necessary due to multiple method variations for backward compatibility
-class PayPalWebCheckoutClient internal constructor(
+class PayPalWebClient internal constructor(
     private val analytics: PayPalWebAnalytics,
     private val payPalWebLauncher: PayPalWebLauncher,
     private val sessionStore: PayPalWebCheckoutSessionStore,
@@ -57,15 +55,15 @@ class PayPalWebCheckoutClient internal constructor(
     private var appSwitchEnabled: Boolean = false
 
     /**
-     * Create a new instance of [PayPalWebCheckoutClient].
+     * Create a new instance of [PayPalWebClient].
      *
      * @param context an Android context
      * @param configuration a [CoreConfig] object
      * @param urlScheme the custom URl scheme used to return to your app from a browser switch flow
      */
     @Deprecated(
-        message = "Use PayPalWebCheckoutClient(context, configuration) instead.",
-        replaceWith = ReplaceWith("PayPalWebCheckoutClient(context, configuration)")
+        message = "Use PayPalWebClient(context, configuration) instead.",
+        replaceWith = ReplaceWith("PayPalWebClient(context, configuration)")
     )
     constructor(
         context: Context,
@@ -391,13 +389,13 @@ class PayPalWebCheckoutClient internal constructor(
 
     /**
      * After a merchant app has re-entered the foreground following an auth challenge
-     * (@see [PayPalWebCheckoutClient.start]), call this method to see if a user has
+     * (@see [PayPalWebClient.start]), call this method to see if a user has
      * successfully authorized a PayPal account as a payment source.
      *
      * @param [intent] An Android intent that holds the deep link put the merchant app
      * back into the foreground after an auth challenge.
      * @param [authState] A continuation state received from [PayPalPresentAuthChallengeResult.Success]
-     * when calling [PayPalWebCheckoutClient.start]. This is needed to properly verify that an
+     * when calling [PayPalWebClient.start]. This is needed to properly verify that an
      * authorization completed successfully.
      */
     @Deprecated(
@@ -425,7 +423,7 @@ class PayPalWebCheckoutClient internal constructor(
 
     /**
      * After a merchant app has re-entered the foreground following an auth challenge
-     * (@see [PayPalWebCheckoutClient.start]), call this method to see if a user has
+     * (@see [PayPalWebClient.start]), call this method to see if a user has
      * successfully authorized a PayPal account as a payment source.
      *
      * @param [intent] An Android intent that holds the deep link put the merchant app
@@ -471,13 +469,13 @@ class PayPalWebCheckoutClient internal constructor(
 
     /**
      * After a merchant app has re-entered the foreground following an auth challenge
-     * (@see [PayPalWebCheckoutClient.vault]), call this method to see if a user has
+     * (@see [PayPalWebClient.vault]), call this method to see if a user has
      * successfully authorized a PayPal account for vaulting.
      *
      * @param [intent] An Android intent that holds the deep link put the merchant app
      * back into the foreground after an auth challenge.
      * @param [authState] A continuation state received from [PayPalPresentAuthChallengeResult.Success]
-     * when calling [PayPalWebCheckoutClient.vault]. This is needed to properly verify that an
+     * when calling [PayPalWebClient.vault]. This is needed to properly verify that an
      * authorization completed successfully.
      */
     @Deprecated(
@@ -569,7 +567,7 @@ class PayPalWebCheckoutClient internal constructor(
     }
     /**
      * After a merchant app has re-entered the foreground following an auth challenge
-     * (@see [PayPalWebCheckoutClient.vault]), call this method to see if a user has
+     * (@see [PayPalWebClient.vault]), call this method to see if a user has
      * successfully authorized a PayPal account for vaulting.
      *
      * @param [intent] An Android intent that holds the deep link put the merchant app
@@ -613,3 +611,14 @@ class PayPalWebCheckoutClient internal constructor(
         }
     }
 }
+
+/**
+ * [PayPalWebCheckoutClient] has been renamed to [PayPalWebClient] since it now offers both
+ * checkout and vaulting functionality. This alias is provided for backward compatibility and
+ * will be removed in a future major version.
+ */
+@Deprecated(
+    message = "PayPalWebCheckoutClient has been renamed to PayPalWebClient.",
+    replaceWith = ReplaceWith("PayPalWebClient")
+)
+typealias PayPalWebCheckoutClient = PayPalWebClient

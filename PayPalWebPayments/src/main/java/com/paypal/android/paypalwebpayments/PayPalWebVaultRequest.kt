@@ -3,7 +3,7 @@ package com.paypal.android.paypalwebpayments
 import com.paypal.android.corepayments.ReturnToAppStrategy
 
 /**
- * Request to vault a PayPal payment method using [PayPalWebCheckoutClient.vault].
+ * Request to vault a PayPal payment method using [PayPalWebClient.vault].
  *
  * @property [setupTokenId] ID for the setup token associated with the vault approval
  * @property [returnToAppStrategy] Strategy for returning to the app after checkout flow
@@ -18,7 +18,7 @@ constructor(
 ) {
 
     /**
-     * Request to vault a PayPal payment method using [PayPalWebCheckoutClient.vault].
+     * Request to vault a PayPal payment method using [PayPalWebClient.vault].
      *
      * @property [setupTokenId] ID for the setup token associated with the vault approval
      */
