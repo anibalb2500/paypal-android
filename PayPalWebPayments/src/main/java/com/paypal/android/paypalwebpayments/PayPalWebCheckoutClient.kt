@@ -55,16 +55,14 @@ class PayPalWebCheckoutClient internal constructor(
     private val applicationScope: CoroutineScope = CoroutineScope(SupervisorJob()),
 ) {
 
-    // Enable app switch by switching this flag to true
-    private val appSwitchWhenEligible: Boolean = true
-
     // for analytics tracking
     private var checkoutOrderId: String? = null
     private var vaultSetupTokenId: String? = null
     private var appSwitchEnabled: Boolean = false
 
-    // Shopper Session ID (v3) — set by createPayPalSession(), awaited by start() / vault()
-    private var shopperSessionDeferred: Deferred<CreateShopperSessionWithAppSwitchEligibilityResponse>? = null
+    // Shopper Session id (v3) — set by createPayPalSession(), awaited by start() / vault()
+    @VisibleForTesting
+    internal var shopperSessionDeferred: Deferred<CreateShopperSessionWithAppSwitchEligibilityResponse>? = null
     private var returnToAppUrlConfig: ReturnToAppUrlConfig? = null
 
     constructor(
@@ -98,11 +96,9 @@ class PayPalWebCheckoutClient internal constructor(
     }
 
     /**
-     * Pre-warms the Shopper Session in the background. Must be called before [start] or [vault]
-     * in SDK v3 flows.
+     * Pre-warms the shopper session in the background. Must be called before [start] or [vault].
      *
-     * Fire and forget — returns immediately. The GraphQL `createShopperSession` call runs
-     * asynchronously and the result is stored internally as a [Deferred].
+     * Fire and forget — returns immediately.
      *
      * @param userIdentity Shopper identity used to pre-identify the payer.
      * @param urlConfig Return-to-app URLs used after checkout completes or is cancelled.
@@ -134,17 +130,17 @@ class PayPalWebCheckoutClient internal constructor(
     }
 
     /**
-     * Initiates PayPal checkout using the Shopper Session ID pre-warmed by [createPayPalSession].
+     * Initiates PayPal checkout using the session pre-warmed by [createPayPalSession].
      *
      * If the session fetch is still in progress this method awaits its completion before
      * launching checkout. If [createPayPalSession] was never called the callback receives a
-     * [PayPalPresentAuthChallengeResult.Failure] with error code `SESSION_NOT_STARTED`.
+     * [PayPalPresentAuthChallengeResult.Failure].
      *
      * @param activity The activity to launch the PayPal checkout from.
-     * @param orderId The ID of the order to be approved.
+     * @param orderId The id of the order to be approved.
      * @param callback Callback to receive the auth-challenge result.
      */
-    // TODO: Narrow exception type once createShopperSessionWithAppSwitchEligibility is implemented
+    // TODO: Narrow exception type once the shopper session network call is finalized
     @Suppress("TooGenericExceptionCaught")
     fun start(
         activity: Activity,
@@ -193,17 +189,17 @@ class PayPalWebCheckoutClient internal constructor(
     }
 
     /**
-     * Initiates PayPal vault using the Shopper Session ID pre-warmed by [createPayPalSession].
+     * Initiates PayPal vault using the session pre-warmed by [createPayPalSession].
      *
      * If the session fetch is still in progress this method awaits its completion before
      * launching the vault flow. If [createPayPalSession] was never called the callback receives a
-     * [PayPalPresentAuthChallengeResult.Failure] with error code `SESSION_NOT_STARTED`.
+     * [PayPalPresentAuthChallengeResult.Failure].
      *
      * @param activity The activity to launch the PayPal vault flow from.
-     * @param setupTokenId The setup token ID associated with the vault approval.
+     * @param setupTokenId The setup token id associated with the vault approval.
      * @param callback Callback to receive the vault result.
      */
-    // TODO: Narrow exception type once createShopperSessionWithAppSwitchEligibility is implemented
+    // TODO: Narrow exception type once the shopper session network call is finalized
     @Suppress("TooGenericExceptionCaught")
     fun vault(
         activity: ComponentActivity,
@@ -338,29 +334,16 @@ class PayPalWebCheckoutClient internal constructor(
      * otherwise falls back to Chrome Custom Tabs.
      *
      * @param activity The activity context needed to launch the checkout UI.
-     * @param shopperSession The shopper session returned by [createShopperSessionWithAppSwitchEligibility].
-     * @param orderId The order ID to approve.
+     * @param shopperSession The resolved shopper session containing launch URLs and eligibility.
+     * @param orderId The order id to approve.
      */
-    private suspend fun launchCheckoutWithShopperSession(
+    private fun launchCheckoutWithShopperSession(
         activity: Activity,
         shopperSession: CreateShopperSessionWithAppSwitchEligibilityResponse,
         orderId: String,
     ): PayPalPresentAuthChallengeResult {
-        val launchUri = getLaunchUri(
-            context = activity.applicationContext,
-            token = orderId,
-            tokenType = TokenType.ORDER_ID,
-            fallbackUri = buildPayPalCheckoutUri(
-                orderId = orderId,
-                funding = PayPalWebCheckoutFundingSource.PAYPAL,
-                returnUrl = returnToAppUrlConfig?.returnAppUrl,
-            ).buildUpon()
-                .appendQueryParameter(
-                    "shopper_session_id",
-                    shopperSession.shopperSessionConfig.id
-                )
-                .build()
-        )
+        appSwitchEnabled = shopperSession.appSwitchEligible
+        val launchUri = shopperSession.getLaunchUri(orderId)
 
         // TODO: Remove ReturnToAppStrategy all together.
         val result = payPalWebLauncher.launchWithUrl(
@@ -397,22 +380,17 @@ class PayPalWebCheckoutClient internal constructor(
      * Attempts a PayPal app switch (App Link) if the PayPal app is installed and eligible;
      * otherwise falls back to Chrome Custom Tabs.
      *
-     * @param activity The activity context needed to launch the checkout UI.
-     * @param shopperSession The shopper session returned by [createShopperSessionWithAppSwitchEligibility].
-     * @param setupTokenId The setup token ID to approve.
+     * @param activity The activity context needed to launch the vault UI.
+     * @param shopperSession The resolved shopper session containing launch URLs and eligibility.
+     * @param setupTokenId The setup token id to approve.
      */
-    @Suppress("UnusedPrivateMember") // TODO: shopperSession will be used once GraphQL call is implemented
-    private suspend fun launchVaultWithSession(
+    private fun launchVaultWithSession(
         activity: Activity,
         shopperSession: CreateShopperSessionWithAppSwitchEligibilityResponse,
         setupTokenId: String,
     ): PayPalPresentAuthChallengeResult {
-        val launchUri = getLaunchUri(
-            context = activity.applicationContext,
-            token = setupTokenId,
-            tokenType = TokenType.VAULT_ID,
-            fallbackUri = buildPayPalVaultUri(setupTokenId)
-        )
+        appSwitchEnabled = shopperSession.appSwitchEligible
+        val launchUri = shopperSession.getLaunchUri(setupTokenId)
 
         val result = payPalWebLauncher.launchWithUrl(
             activity = activity,
@@ -445,24 +423,22 @@ class PayPalWebCheckoutClient internal constructor(
     /**
      * Creates a shopper session by calling the PayPal GraphQL `createShopperSession` mutation.
      *
-     * Returns the session ID string on success. This is called internally by [createPayPalSession]
-     * and runs on a background coroutine.
-     *
-     * TODO: DTPPMOBILE-530 — implement the actual GraphQL call.
+     * TODO: Replace with actual implementation.
      */
     @VisibleForTesting
-    @Suppress("UnusedPrivateMember") // TODO: params will be used once GraphQL call is implemented
+    @Suppress("UnusedPrivateMember") // TODO: params will be used once implementation is complete
     internal suspend fun createShopperSessionWithAppSwitchEligibility(
         urlConfig: ReturnToAppUrlConfig,
         userIdentity: PayPalUserIdentity,
         userAction: PayPalUserAction,
     ): CreateShopperSessionWithAppSwitchEligibilityResponse {
-        // TODO: Replace with real GraphQL createShopperSession mutation.
+        // TODO: Replace with real implementation.
+        val url = baseUrl.toUri().toString()
         return CreateShopperSessionWithAppSwitchEligibilityResponse(
-            appSwitchEligible = true,
-            redirectUrl = "",
-            checkoutFallbackUrl = "",
-            inEligibleReason = "",
+            appSwitchEligible = false,
+            redirectUrl = url,
+            checkoutFallbackUrl = url,
+            inEligibleReason = null,
             matchedAuthenticationMethods = emptyList(),
             shopperSessionConfig = ShopperSessionConfig("", "")
         )
@@ -593,6 +569,15 @@ class PayPalWebCheckoutClient internal constructor(
     // endregion
 
     // region Private Helpers
+    private fun CreateShopperSessionWithAppSwitchEligibilityResponse.getLaunchUri(token: String): Uri {
+        val launchUri = if (appSwitchEligible) {
+            redirectUrl.toUri()
+        } else {
+            checkoutFallbackUrl.toUri()
+        }
+
+        return launchUri.buildUpon().appendQueryParameter("token", token).build()
+    }
 
     private fun buildPayPalCheckoutUri(
         orderId: String?,
@@ -633,7 +618,7 @@ class PayPalWebCheckoutClient internal constructor(
         tokenType: TokenType,
         fallbackUri: Uri
     ): Uri {
-        return if (appSwitchWhenEligible && deviceInspector.isPayPalInstalled) {
+        return if (deviceInspector.isPayPalInstalled) {
             val patchCcoResult = patchCCOWithAppSwitchEligibility(
                 context = context,
                 orderId = token,
@@ -760,7 +745,7 @@ class PayPalWebCheckoutClient internal constructor(
     /**
      * Confirm PayPal payment source for an order with callback.
      *
-     * @deprecated Use [createPayPalSession] followed by [start] with only the order ID instead.
+     * @deprecated Use [createPayPalSession] followed by [start] with only the order id instead.
      */
     @Deprecated(
         message = "Use createPayPalSession() followed by start(activity, orderId, callback) instead.",
@@ -835,7 +820,7 @@ class PayPalWebCheckoutClient internal constructor(
     /**
      * Vault PayPal as a payment method with callback.
      *
-     * @deprecated Use [createPayPalSession] followed by [vault] with only the setup token ID instead.
+     * @deprecated Use [createPayPalSession] followed by [vault] with only the setup token id instead.
      */
     @Deprecated(
         message = "Use createPayPalSession() followed by vault(activity, setupTokenId, callback) instead.",

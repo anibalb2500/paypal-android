@@ -1,4 +1,5 @@
 package com.paypal.android.ui.paypalweb
+import com.paypal.android.DemoConstants
 
 import android.content.Context
 import android.content.Intent
@@ -22,7 +23,6 @@ import com.paypal.android.paypalwebpayments.PayPalWebCheckoutFundingSource
 import com.paypal.android.uishared.state.ActionState
 import com.paypal.android.usecase.CompleteOrderUseCase
 import com.paypal.android.usecase.CreateOrderUseCase
-import com.paypal.android.utils.ReturnUrlProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,7 +42,7 @@ class PayPalCheckoutViewModel @Inject constructor(
         private val TAG = PayPalCheckoutViewModel::class.qualifiedName
     }
 
-    private val coreConfig = CoreConfig(SDKSampleServerAPI.clientId)
+    private val coreConfig = CoreConfig(SDKSampleServerAPI.clientId, SDKSampleServerAPI.merchantId)
     private val payPalDataCollector = PayPalDataCollector(coreConfig)
     private val paypalClient =
         PayPalWebCheckoutClient(applicationContext, coreConfig)
@@ -83,7 +83,7 @@ class PayPalCheckoutViewModel @Inject constructor(
             _uiState.update { it.copy(fundingSource = value) }
         }
 
-    var userIdentity: PayPalUserIdentity
+    var userIdentity: PayPalUserIdentity?
         get() = _uiState.value.userIdentity
         set(value) {
             _uiState.update { it.copy(userIdentity = value) }
@@ -95,19 +95,13 @@ class PayPalCheckoutViewModel @Inject constructor(
             _uiState.update { it.copy(userAction = value) }
         }
 
-    private var createPayPalSessionState
-        get() = _uiState.value.createPayPalSessionState
-        set(value) {
-            _uiState.update { it.copy(createPayPalSessionState = value) }
-        }
-
     fun createPayPalSession() {
         paypalClient.createPayPalSession(
-            userIdentity = _uiState.value.userIdentity,
-            urlConfig = ReturnUrlProvider.returnToAppUrlConfig,
+            userIdentity = _uiState.value.userIdentity ?: PayPalUserIdentity(),
+            urlConfig = DemoConstants.returnToAppUrlConfig,
             userAction = _uiState.value.userAction
         )
-        createPayPalSessionState = ActionState.Success(Unit)
+        _uiState.update { it.copy(isPayPalSessionCreated = true) }
     }
 
     fun createOrder() {

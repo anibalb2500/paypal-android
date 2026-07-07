@@ -1,4 +1,5 @@
 package com.paypal.android.ui.approveorder
+import com.paypal.android.DemoConstants
 
 import android.content.Context
 import android.content.Intent
@@ -25,7 +26,6 @@ import com.paypal.android.uishared.enums.StoreInVaultOption
 import com.paypal.android.uishared.state.ActionState
 import com.paypal.android.usecase.CompleteOrderUseCase
 import com.paypal.android.usecase.CreateOrderUseCase
-import com.paypal.android.utils.ReturnUrlProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,7 +41,7 @@ class ApproveOrderViewModel @Inject constructor(
     private val completeOrderUseCase: CompleteOrderUseCase,
 ) : ViewModel() {
 
-    private val coreConfig = CoreConfig(SDKSampleServerAPI.clientId)
+    private val coreConfig = CoreConfig(SDKSampleServerAPI.clientId, SDKSampleServerAPI.merchantId)
     private val payPalDataCollector = PayPalDataCollector(coreConfig)
     private val cardClient = CardClient(applicationContext, coreConfig)
 
@@ -82,7 +82,7 @@ class ApproveOrderViewModel @Inject constructor(
                 expirationYear = dateString.formattedYear,
                 securityCode = cardSecurityCode
             )
-            val returnUrl = ReturnUrlProvider.returnToAppUrlConfig.returnAppUrl
+            val returnUrl = DemoConstants.returnToAppUrlConfig.returnAppUrl
             CardRequest(orderId, card, returnUrl, scaOption)
         }
         cardClient.approveOrder(cardRequest) { result ->
