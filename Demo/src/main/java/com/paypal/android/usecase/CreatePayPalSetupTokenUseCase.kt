@@ -7,6 +7,7 @@ import com.paypal.android.api.model.serialization.PayPalExperienceContext
 import com.paypal.android.api.model.serialization.PayPalNativeApp
 import com.paypal.android.api.model.serialization.PayPalSetupRequestBody
 import com.paypal.android.api.model.serialization.PayPalSource
+import com.paypal.android.api.services.MerchantIntegration
 import com.paypal.android.api.services.SDKSampleServerAPI
 import com.paypal.android.api.services.SDKSampleServerResult
 import kotlinx.coroutines.Dispatchers
@@ -16,7 +17,9 @@ import javax.inject.Inject
 class CreatePayPalSetupTokenUseCase @Inject constructor(
     private val sdkSampleServerAPI: SDKSampleServerAPI
 ) {
-    suspend operator fun invoke(): SDKSampleServerResult<PayPalSetupToken, Exception> =
+    suspend operator fun invoke(
+        merchantIntegration: MerchantIntegration = SDKSampleServerAPI.SELECTED_MERCHANT_INTEGRATION
+    ): SDKSampleServerResult<PayPalSetupToken, Exception> =
         withContext(Dispatchers.IO) {
             val returnToAppUrlConfig = DemoConstants.returnToAppUrlConfig
             val experienceContext = PayPalExperienceContext(
@@ -35,6 +38,6 @@ class CreatePayPalSetupTokenUseCase @Inject constructor(
                 )
             )
 
-            sdkSampleServerAPI.createPayPalSetupToken(payPalSetupRequest)
+            sdkSampleServerAPI.createPayPalSetupToken(payPalSetupRequest, merchantIntegration)
         }
 }

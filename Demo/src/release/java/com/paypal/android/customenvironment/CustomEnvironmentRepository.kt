@@ -17,4 +17,5 @@ class CustomEnvironmentRepository @Inject constructor() {
     fun clearConfig() = Unit
     fun getCoreConfig(fallbackConfig: CoreConfig): CoreConfig = fallbackConfig
     fun getMerchantBaseUrl(): String = MerchantIntegration.DEFAULT.baseUrl
+    fun getMerchantIntegration(): MerchantIntegration = MerchantIntegration.DEFAULT
 }

@@ -3,6 +3,10 @@ package com.paypal.android.api.services
 import com.paypal.android.api.model.Order
 import com.paypal.android.api.model.PayPalSetupToken
 import com.paypal.android.api.model.serialization.CardSetupRequest
+import com.paypal.android.api.model.serialization.LiveCaptureOrderResponse
+import com.paypal.android.api.model.serialization.LiveCreateOrderResponse
+import com.paypal.android.api.model.serialization.LiveCreateSetupTokenResponse
+import com.paypal.android.api.model.serialization.LivePaymentTokenResponse
 import com.paypal.android.api.model.serialization.OrderRequestBody
 import com.paypal.android.api.model.serialization.OrderResponse
 import com.paypal.android.api.model.serialization.PayPalSetupRequestBody
@@ -13,6 +17,7 @@ import com.paypal.android.api.model.serialization.toCardPaymentToken
 import com.paypal.android.api.model.serialization.toCardSetupToken
 import com.paypal.android.api.model.serialization.toOrder
 import com.paypal.android.api.model.serialization.toPayPalPaymentToken
+import com.paypal.android.api.model.serialization.toPayPalSetupToken
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -49,6 +54,7 @@ class SDKSampleServerAPI(
             get() = SELECTED_MERCHANT_INTEGRATION.merchantId
     }
 
+    /** Route shape used by the sandbox merchant server (sdk-sample-merchant-server). */
     @JvmSuppressWildcards
     interface RetrofitService {
 
@@ -82,22 +88,64 @@ class SDKSampleServerAPI(
         ): SetupTokenResponse
     }
 
-    private val serviceMap: Map<MerchantIntegration, RetrofitService>
+    /**
+     * Route shape used by the live merchant server (mockmerchantapp, aka XOSphere's PPCP
+     * Direct API integration). Paths are relative to [MerchantIntegration.LIVE]'s baseUrl,
+     * which already includes the `/PPCP/production_us/` prefix. Response bodies are
+     * mockmerchantapp's own reshaped DTOs, not raw PayPal Orders v2 / Vault v3 JSON -- see
+     * [com.paypal.android.api.model.serialization.LiveCreateOrderResponse] and friends.
+     *
+     * There's no vault-only endpoint that supports card payment sources here (mockmerchantapp's
+     * vault routes assume a PayPal payment source), and no PayPal-Client-Metadata-Id forwarding
+     * on capture/authorize -- both are sandbox-only capabilities for now.
+     */
+    @JvmSuppressWildcards
+    interface LiveRetrofitService {
+
+        @POST("v2/checkout/orders")
+        suspend fun createOrder(@Body orderRequestBody: OrderRequestBody): LiveCreateOrderResponse
+
+        @POST("v2/checkout/orders/{orderId}/capture")
+        suspend fun captureOrder(@Path("orderId") orderId: String): LiveCaptureOrderResponse
+
+        @POST("v2/checkout/orders/{orderId}/authorize")
+        suspend fun authorizeOrder(@Path("orderId") orderId: String): LiveCaptureOrderResponse
+
+        @POST("v3/vault/setup-tokens")
+        suspend fun createPayPalSetupToken(
+            @Body setupRequest: PayPalSetupRequestBody
+        ): LiveCreateSetupTokenResponse
+
+        @POST("v3/vault/payment-tokens")
+        suspend fun createPaymentToken(@Body tokenRequest: TokenRequest): LivePaymentTokenResponse
+    }
+
+    /** Wraps whichever Retrofit service shape a given [MerchantIntegration] actually speaks. */
+    private sealed class MerchantService {
+        data class Default(val service: RetrofitService) : MerchantService()
+        data class Live(val service: LiveRetrofitService) : MerchantService()
+    }
+
+    private val serviceMap: Map<MerchantIntegration, MerchantService>
 
     init {
-        val serviceMap = mutableMapOf<MerchantIntegration, RetrofitService>()
+        val serviceMap = mutableMapOf<MerchantIntegration, MerchantService>()
         for (merchant in MerchantIntegration.entries) {
             val baseUrl = if (merchant == MerchantIntegration.DEFAULT && !customMerchantBaseUrl.isNullOrBlank()) {
                 customMerchantBaseUrl
             } else {
                 merchant.baseUrl
             }
-            serviceMap[merchant] = createService(baseUrl)
+            serviceMap[merchant] = if (merchant == MerchantIntegration.LIVE) {
+                MerchantService.Live(createLiveService(baseUrl))
+            } else {
+                MerchantService.Default(createService(baseUrl))
+            }
         }
         this.serviceMap = serviceMap
     }
 
-    private fun createService(baseUrl: String): RetrofitService {
+    private fun buildRetrofit(baseUrl: String): Retrofit {
         val okHttpBuilder = OkHttpClient.Builder()
         val httpLoggingInterceptor = HttpLoggingInterceptor()
         httpLoggingInterceptor.level = HttpLoggingInterceptor.Level.BODY
@@ -109,17 +157,27 @@ class SDKSampleServerAPI(
         okHttpBuilder.addInterceptor(httpLoggingInterceptor)
         val okHttpClient = okHttpBuilder.build()
 
-        val retrofit = Retrofit.Builder()
+        return Retrofit.Builder()
             .baseUrl(baseUrl)
             .client(okHttpClient)
             .addConverterFactory(KotlinSerializationConverterFactory.create())
             .build()
-        return retrofit.create(RetrofitService::class.java)
     }
 
-    private fun findService(merchantIntegration: MerchantIntegration) =
+    private fun createService(baseUrl: String): RetrofitService =
+        buildRetrofit(baseUrl).create(RetrofitService::class.java)
+
+    private fun createLiveService(baseUrl: String): LiveRetrofitService =
+        buildRetrofit(baseUrl).create(LiveRetrofitService::class.java)
+
+    private fun findMerchantService(merchantIntegration: MerchantIntegration) =
         serviceMap[merchantIntegration]
             ?: throw AssertionError("Couldn't find retrofit service for ${merchantIntegration.name}")
+
+    private fun unsupportedForLive(operation: String): Nothing = throw UnsupportedOperationException(
+        "$operation is not supported against MerchantIntegration.LIVE: mockmerchantapp's " +
+            "vault endpoints assume a PayPal payment source, not a card."
+    )
 
     suspend fun createOrder(
         orderRequestBody: OrderRequestBody,
@@ -128,7 +186,10 @@ class SDKSampleServerAPI(
         if (DEFAULT_ORDER_ID != null) {
             Order(DEFAULT_ORDER_ID, "CREATED")
         } else {
-            findService(merchantIntegration).createOrder(orderRequestBody)
+            when (val service = findMerchantService(merchantIntegration)) {
+                is MerchantService.Default -> service.service.createOrder(orderRequestBody)
+                is MerchantService.Live -> service.service.createOrder(orderRequestBody).toOrder()
+            }
         }
     }
 
@@ -137,9 +198,12 @@ class SDKSampleServerAPI(
         payPalClientMetadataId: String? = null,
         merchantIntegration: MerchantIntegration = SELECTED_MERCHANT_INTEGRATION
     ) = safeApiCall {
-        val orderResponse =
-            findService(merchantIntegration).captureOrder(orderId, payPalClientMetadataId)
-        orderResponse.toOrder()
+        when (val service = findMerchantService(merchantIntegration)) {
+            is MerchantService.Default ->
+                service.service.captureOrder(orderId, payPalClientMetadataId).toOrder()
+            is MerchantService.Live ->
+                service.service.captureOrder(orderId).toOrder(orderId)
+        }
     }
 
     suspend fun authorizeOrder(
@@ -147,54 +211,75 @@ class SDKSampleServerAPI(
         payPalClientMetadataId: String? = null,
         merchantIntegration: MerchantIntegration = SELECTED_MERCHANT_INTEGRATION
     ) = safeApiCall {
-        val orderResponse =
-            findService(merchantIntegration).authorizeOrder(orderId, payPalClientMetadataId)
-        orderResponse.toOrder()
+        when (val service = findMerchantService(merchantIntegration)) {
+            is MerchantService.Default ->
+                service.service.authorizeOrder(orderId, payPalClientMetadataId).toOrder()
+            is MerchantService.Live ->
+                service.service.authorizeOrder(orderId).toOrder(orderId)
+        }
     }
 
+    /** Card vaulting. Not available against [MerchantIntegration.LIVE]; see [unsupportedForLive]. */
     suspend fun createSetupToken(
         setupRequest: CardSetupRequest,
         merchantIntegration: MerchantIntegration = SELECTED_MERCHANT_INTEGRATION
     ) = safeApiCall {
-        val setupTokenResponse = findService(merchantIntegration).createSetupToken(setupRequest)
-        setupTokenResponse.toCardSetupToken()
+        when (val service = findMerchantService(merchantIntegration)) {
+            is MerchantService.Default -> service.service.createSetupToken(setupRequest).toCardSetupToken()
+            is MerchantService.Live -> unsupportedForLive("Card vaulting (createSetupToken)")
+        }
     }
 
+    /** Card vaulting. Not available against [MerchantIntegration.LIVE]; see [unsupportedForLive]. */
     suspend fun getSetupToken(
         setupTokenId: String,
         merchantIntegration: MerchantIntegration = SELECTED_MERCHANT_INTEGRATION
     ) = safeApiCall {
-        val setupTokenResponse = findService(merchantIntegration).getSetupToken(setupTokenId)
-        setupTokenResponse.toCardSetupToken()
+        when (val service = findMerchantService(merchantIntegration)) {
+            is MerchantService.Default -> service.service.getSetupToken(setupTokenId).toCardSetupToken()
+            is MerchantService.Live -> unsupportedForLive("getSetupToken")
+        }
     }
 
+    /** Card vaulting. Not available against [MerchantIntegration.LIVE]; see [unsupportedForLive]. */
     suspend fun createPaymentToken(
         tokenRequest: TokenRequest,
         merchantIntegration: MerchantIntegration = SELECTED_MERCHANT_INTEGRATION
     ) = safeApiCall {
-        val paymentTokenResponse = findService(merchantIntegration).createPaymentToken(tokenRequest)
-        paymentTokenResponse.toCardPaymentToken()
+        when (val service = findMerchantService(merchantIntegration)) {
+            is MerchantService.Default -> service.service.createPaymentToken(tokenRequest).toCardPaymentToken()
+            is MerchantService.Live -> unsupportedForLive("Card vaulting (createPaymentToken)")
+        }
     }
 
     suspend fun createPayPalPaymentToken(
         tokenRequest: TokenRequest,
         merchantIntegration: MerchantIntegration = SELECTED_MERCHANT_INTEGRATION
     ) = safeApiCall {
-        val paymentTokenResponse = findService(merchantIntegration).createPaymentToken(tokenRequest)
-        paymentTokenResponse.toPayPalPaymentToken()
+        when (val service = findMerchantService(merchantIntegration)) {
+            is MerchantService.Default ->
+                service.service.createPaymentToken(tokenRequest).toPayPalPaymentToken()
+            is MerchantService.Live ->
+                service.service.createPaymentToken(tokenRequest).toPayPalPaymentToken()
+        }
     }
 
     suspend fun createPayPalSetupToken(
         setupRequest: PayPalSetupRequestBody,
         merchantIntegration: MerchantIntegration = SELECTED_MERCHANT_INTEGRATION
     ) = safeApiCall {
-        val setupTokenResponse =
-            findService(merchantIntegration).createPayPalSetupToken(setupRequest)
-        PayPalSetupToken(
-            id = setupTokenResponse.id,
-            customerId = setupTokenResponse.customer.id,
-            status = setupTokenResponse.status
-        )
+        when (val service = findMerchantService(merchantIntegration)) {
+            is MerchantService.Default -> {
+                val setupTokenResponse = service.service.createPayPalSetupToken(setupRequest)
+                PayPalSetupToken(
+                    id = setupTokenResponse.id,
+                    customerId = setupTokenResponse.customer.id,
+                    status = setupTokenResponse.status
+                )
+            }
+            is MerchantService.Live ->
+                service.service.createPayPalSetupToken(setupRequest).toPayPalSetupToken()
+        }
     }
 
     // Ref: https://medium.com/@douglas.iacovelli/how-to-handle-errors-with-retrofit-and-coroutines-33e7492a912

@@ -98,6 +98,21 @@ class CustomEnvironmentRepository @Inject constructor(
         }
     }
 
+    /**
+     * Returns which [MerchantIntegration] the merchant-server calls (order creation, capture,
+     * authorize, vaulting) should use for the currently selected environment. Only
+     * [SelectedEnvironment.LIVE] routes through [MerchantIntegration.LIVE] (mockmerchantapp);
+     * [SelectedEnvironment.SANDBOX] and [SelectedEnvironment.CUSTOM] use the default sandbox
+     * merchant server (CUSTOM already has its own base-url override via [getMerchantBaseUrl]).
+     */
+    fun getMerchantIntegration(): MerchantIntegration {
+        return if (getConfig().selectedEnvironment == SelectedEnvironment.LIVE) {
+            MerchantIntegration.LIVE
+        } else {
+            MerchantIntegration.DEFAULT
+        }
+    }
+
     private fun getSelectedEnvironment(): SelectedEnvironment {
         return prefs.getString(KEY_SELECTED_ENV, null)
             ?.let { runCatching { SelectedEnvironment.valueOf(it) }.getOrNull() }

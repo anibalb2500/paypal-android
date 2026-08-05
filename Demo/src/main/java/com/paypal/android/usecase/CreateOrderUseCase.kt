@@ -10,6 +10,7 @@ import com.paypal.android.api.model.serialization.PayPalOrderExperienceContext
 import com.paypal.android.api.model.serialization.PayPalPaymentSource
 import com.paypal.android.api.model.serialization.PurchaseUnit
 import com.paypal.android.api.model.serialization.Vault
+import com.paypal.android.api.services.MerchantIntegration
 import com.paypal.android.api.services.SDKSampleServerAPI
 import com.paypal.android.api.services.SDKSampleServerResult
 import com.paypal.android.models.OrderRequest
@@ -21,7 +22,10 @@ class CreateOrderUseCase @Inject constructor(
     private val sdkSampleServerAPI: SDKSampleServerAPI
 ) {
 
-    suspend operator fun invoke(request: OrderRequest): SDKSampleServerResult<Order, Exception> {
+    suspend operator fun invoke(
+        request: OrderRequest,
+        merchantIntegration: MerchantIntegration = SDKSampleServerAPI.SELECTED_MERCHANT_INTEGRATION
+    ): SDKSampleServerResult<Order, Exception> {
         val paymentSource = when {
             request.shouldVaultOnSuccess -> {
                 OrderPaymentSource(
@@ -59,7 +63,7 @@ class CreateOrderUseCase @Inject constructor(
                 paymentSource = paymentSource
             )
 
-            sdkSampleServerAPI.createOrder(orderRequestBody)
+            sdkSampleServerAPI.createOrder(orderRequestBody, merchantIntegration)
         }
     }
 }

@@ -88,7 +88,8 @@ class PayPalVaultViewModel @Inject constructor(
         createPayPalSession()
         viewModelScope.launch {
             createSetupTokenState = ActionState.Loading
-            createSetupTokenState = createPayPalSetupTokenUseCase().mapToActionState()
+            val merchantIntegration = customEnvironmentRepository.getMerchantIntegration()
+            createSetupTokenState = createPayPalSetupTokenUseCase(merchantIntegration).mapToActionState()
         }
     }
 
@@ -124,8 +125,9 @@ class PayPalVaultViewModel @Inject constructor(
         } else {
             createPaymentTokenState = ActionState.Loading
             viewModelScope.launch {
+                val merchantIntegration = customEnvironmentRepository.getMerchantIntegration()
                 createPaymentTokenState =
-                    createPayPalPaymentTokenUseCase(setupToken).mapToActionState()
+                    createPayPalPaymentTokenUseCase(setupToken, merchantIntegration).mapToActionState()
             }
         }
     }

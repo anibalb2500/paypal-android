@@ -62,7 +62,8 @@ class ApproveOrderViewModel @Inject constructor(
                 val shouldVault = shouldVaultOption == StoreInVaultOption.ON_SUCCESS
                 OrderRequest(intentOption, shouldVault)
             }
-            createOrderState = createOrderUseCase(orderRequest).mapToActionState()
+            val merchantIntegration = customEnvironmentRepository.getMerchantIntegration()
+            createOrderState = createOrderUseCase(orderRequest, merchantIntegration).mapToActionState()
         }
     }
 
@@ -138,8 +139,9 @@ class ApproveOrderViewModel @Inject constructor(
                 val dataCollectorRequest =
                     PayPalDataCollectorRequest(hasUserLocationConsent = false)
                 val cmid = payPalDataCollector.collectDeviceData(context, dataCollectorRequest)
+                val merchantIntegration = customEnvironmentRepository.getMerchantIntegration()
                 completeOrderState =
-                    completeOrderUseCase(orderId, intentOption, cmid).mapToActionState()
+                    completeOrderUseCase(orderId, intentOption, cmid, merchantIntegration).mapToActionState()
             }
         }
     }
