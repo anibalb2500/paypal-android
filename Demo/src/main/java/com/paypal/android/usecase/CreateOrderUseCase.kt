@@ -50,7 +50,7 @@ class CreateOrderUseCase @Inject constructor(
         return withContext(Dispatchers.IO) {
             val amount = Amount(
                 currencyCode = "USD",
-                value = "10.99"
+                value = "0.01"
             )
 
             val purchaseUnit = PurchaseUnit(

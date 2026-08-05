@@ -15,7 +15,7 @@ enum class MerchantIntegration(val baseUrl: String, val clientId: String, val me
     // sandbox merchant server's.
     LIVE(
         baseUrl = "https://gse-appstestbed.com/PPCP/production_us/",
-        clientId = "AaGlF8u_RhsZ8c7RFv3IagEHP4qjQ9oRpZvoj2NMdCWPdJIftVTsS4mSAovJ0SGqxxeR0wiwQ2waMx1y",
-        merchantId = "QHW8QGRWM58TS"
+        clientId = "AYgaQtnz7wZVZM7ODhuVL16QczZLvZ14cBjuasBZZnIXH7pKLS1DoPuF-eS-Eg5PsTXv4gYkoOOrFS2J",
+        merchantId = "8AYC6TF2L3D7W"
     ),
 }
