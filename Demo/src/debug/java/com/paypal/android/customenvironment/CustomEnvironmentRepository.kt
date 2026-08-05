@@ -76,14 +76,14 @@ class CustomEnvironmentRepository @Inject constructor(
         return when (settings.selectedEnvironment) {
             SelectedEnvironment.LIVE ->
                 CoreConfig(
-                    clientId = fallbackConfig.clientId,
-                    fallbackConfig.merchantId,
+                    clientId = MerchantIntegration.LIVE.clientId,
+                    MerchantIntegration.LIVE.merchantId,
                     environment = Environment.LIVE
                 )
             SelectedEnvironment.SANDBOX ->
                 CoreConfig(
-                    clientId = fallbackConfig.clientId,
-                    fallbackConfig.merchantId,
+                    clientId = MerchantIntegration.DEFAULT.clientId,
+                    MerchantIntegration.DEFAULT.merchantId,
                     environment = Environment.SANDBOX
                 )
             SelectedEnvironment.CUSTOM -> if (settings.isValidEnvironment) {
